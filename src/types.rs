@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Serialize)]
 pub struct ApiResponse<T> {
     pub success: bool,
@@ -9,6 +8,7 @@ pub struct ApiResponse<T> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
+
 
 #[derive(Deserialize)]
 pub struct CreateTokenRequest {
@@ -54,7 +54,6 @@ pub struct SendTokenRequest {
     pub amount: u64,
 }
 
-
 #[derive(Serialize)]
 pub struct KeypairData {
     pub pubkey: String,
@@ -92,14 +91,14 @@ pub struct VerifyMessageData {
 #[derive(Serialize)]
 pub struct SolTransferData {
     pub program_id: String,
-    pub accounts: Vec<String>,
+    pub accounts: Vec<String>, 
     pub instruction_data: String,
 }
 
 #[derive(Serialize)]
 pub struct TokenTransferAccount {
     pub pubkey: String,
-    #[serde(rename = "isSigner")]
+    #[serde(rename = "isSigner")] 
     pub is_signer: bool,
 }
 

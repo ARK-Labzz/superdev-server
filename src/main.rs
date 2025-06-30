@@ -2,7 +2,6 @@ use actix_web::{
     post, web, App, HttpResponse, Result as ActixResult, 
     middleware::Logger, HttpServer
 };
-use serde::{Deserialize, Serialize};
 use std::env;
 
 mod types;
@@ -37,6 +36,15 @@ async fn generate_keypair() -> ActixResult<HttpResponse> {
 
 #[post("/token/create")]
 async fn create_token(body: web::Json<CreateTokenRequest>) -> ActixResult<HttpResponse> {
+    if body.mint_authority.trim().is_empty() || body.mint.trim().is_empty() {
+        let response = ApiResponse::<()> {
+            success: false,
+            data: None,
+            error: Some("Missing required fields".to_string()),
+        };
+        return Ok(HttpResponse::BadRequest().json(response));
+    }
+
     match SolanaService::create_token_instruction(&body) {
         Ok(instruction_data) => {
             let response = ApiResponse {
@@ -60,6 +68,16 @@ async fn create_token(body: web::Json<CreateTokenRequest>) -> ActixResult<HttpRe
 
 #[post("/token/mint")]
 async fn mint_token(body: web::Json<MintTokenRequest>) -> ActixResult<HttpResponse> {
+    if body.mint.trim().is_empty() || body.destination.trim().is_empty() || 
+       body.authority.trim().is_empty() || body.amount == 0 {
+        let response = ApiResponse::<()> {
+            success: false,
+            data: None,
+            error: Some("Missing required fields".to_string()),
+        };
+        return Ok(HttpResponse::BadRequest().json(response));
+    }
+
     match SolanaService::create_mint_instruction(&body) {
         Ok(instruction_data) => {
             let response = ApiResponse {
@@ -83,8 +101,7 @@ async fn mint_token(body: web::Json<MintTokenRequest>) -> ActixResult<HttpRespon
 
 #[post("/message/sign")]
 async fn sign_message(body: web::Json<SignMessageRequest>) -> ActixResult<HttpResponse> {
-   
-    if body.message.is_empty() || body.secret.is_empty() {
+    if body.message.trim().is_empty() || body.secret.trim().is_empty() {
         let response = ApiResponse::<()> {
             success: false,
             data: None,
@@ -120,6 +137,15 @@ async fn sign_message(body: web::Json<SignMessageRequest>) -> ActixResult<HttpRe
 
 #[post("/message/verify")]
 async fn verify_message(body: web::Json<VerifyMessageRequest>) -> ActixResult<HttpResponse> {
+    if body.message.trim().is_empty() || body.signature.trim().is_empty() || body.pubkey.trim().is_empty() {
+        let response = ApiResponse::<()> {
+            success: false,
+            data: None,
+            error: Some("Missing required fields".to_string()),
+        };
+        return Ok(HttpResponse::BadRequest().json(response));
+    }
+
     match SolanaService::verify_message(&body.message, &body.signature, &body.pubkey) {
         Ok(is_valid) => {
             let response = ApiResponse {
@@ -144,9 +170,17 @@ async fn verify_message(body: web::Json<VerifyMessageRequest>) -> ActixResult<Ht
     }
 }
 
-
 #[post("/send/sol")]
 async fn send_sol(body: web::Json<SendSolRequest>) -> ActixResult<HttpResponse> {
+    if body.from.trim().is_empty() || body.to.trim().is_empty() || body.lamports == 0 {
+        let response = ApiResponse::<()> {
+            success: false,
+            data: None,
+            error: Some("Missing required fields".to_string()),
+        };
+        return Ok(HttpResponse::BadRequest().json(response));
+    }
+
     match SolanaService::create_sol_transfer_instruction(&body) {
         Ok(instruction_data) => {
             let response = ApiResponse {
@@ -170,6 +204,16 @@ async fn send_sol(body: web::Json<SendSolRequest>) -> ActixResult<HttpResponse> 
 
 #[post("/send/token")]
 async fn send_token(body: web::Json<SendTokenRequest>) -> ActixResult<HttpResponse> {
+    if body.destination.trim().is_empty() || body.mint.trim().is_empty() || 
+       body.owner.trim().is_empty() || body.amount == 0 {
+        let response = ApiResponse::<()> {
+            success: false,
+            data: None,
+            error: Some("Missing required fields".to_string()),
+        };
+        return Ok(HttpResponse::BadRequest().json(response));
+    }
+
     match SolanaService::create_token_transfer_instruction(&body) {
         Ok(instruction_data) => {
             let response = ApiResponse {
@@ -192,16 +236,14 @@ async fn send_token(body: web::Json<SendTokenRequest>) -> ActixResult<HttpRespon
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    
     env_logger::init();
 
-    
     let port = env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .expect("PORT must be a valid number");
 
-    println!("🚀 Starting Solana Fellowship Server on port {}", port);
+    println!("Now starting the Solana Fellowship Server on port {}", port);
 
     HttpServer::new(|| {
         App::new()
