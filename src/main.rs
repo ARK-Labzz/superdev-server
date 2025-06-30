@@ -1,8 +1,9 @@
 use actix_web::{
-    post, web, HttpResponse, Result as ActixResult, 
-    middleware::Logger
+    post, web, App, HttpResponse, Result as ActixResult, 
+    middleware::Logger, HttpServer
 };
-use shuttle_actix_web::ShuttleActixWeb;
+use serde::{Deserialize, Serialize};
+use std::env;
 
 mod types;
 mod solana_service;
@@ -32,6 +33,7 @@ async fn generate_keypair() -> ActixResult<HttpResponse> {
         }
     }
 }
+
 
 #[post("/token/create")]
 async fn create_token(body: web::Json<CreateTokenRequest>) -> ActixResult<HttpResponse> {
@@ -81,7 +83,7 @@ async fn mint_token(body: web::Json<MintTokenRequest>) -> ActixResult<HttpRespon
 
 #[post("/message/sign")]
 async fn sign_message(body: web::Json<SignMessageRequest>) -> ActixResult<HttpResponse> {
-    
+   
     if body.message.is_empty() || body.secret.is_empty() {
         let response = ApiResponse::<()> {
             success: false,
@@ -188,24 +190,31 @@ async fn send_token(body: web::Json<SendTokenRequest>) -> ActixResult<HttpRespon
     }
 }
 
-#[shuttle_runtime::main]
-async fn main() -> ShuttleActixWeb<impl FnOnce(&mut web::ServiceConfig) + Send + Clone + 'static> {
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
     
     env_logger::init();
 
-    let config = move |cfg: &mut web::ServiceConfig| {
-        cfg.service(
-            web::scope("")
-                .wrap(Logger::default())
-                .service(generate_keypair)
-                .service(create_token)
-                .service(mint_token)
-                .service(sign_message)
-                .service(verify_message)
-                .service(send_sol)
-                .service(send_token)
-        );
-    };
+    
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse::<u16>()
+        .expect("PORT must be a valid number");
 
-    Ok(config.into())
+    println!("🚀 Starting Solana Fellowship Server on port {}", port);
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(Logger::default())
+            .service(generate_keypair)
+            .service(create_token)
+            .service(mint_token)
+            .service(sign_message)
+            .service(verify_message)
+            .service(send_sol)
+            .service(send_token)
+    })
+    .bind(("0.0.0.0", port))?
+    .run()
+    .await
 }
